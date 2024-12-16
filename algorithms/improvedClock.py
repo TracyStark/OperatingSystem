@@ -1,50 +1,46 @@
-# algorithms/improvedClock.py
-
 from pageReplacement import PageReplacement
 from page import Page
 
 class ImprovedClock(PageReplacement):
-    def __init__(self, page_table_size):
-        super().__init__(page_table_size)
-        self.pointer = 0  # 指针，模拟时钟指针
-        self.pages_in_memory = []  # 页表
+    def __init__(self, num_frames):
+        super().__init__(num_frames)
+        self.pointer = 0  # 指针初始化为0
 
-    def access_page(self, page_number, access_method):
-        """
-        访问页面，使用 Improved Clock 算法
-        """
-        # 查找页面是否已在内存中
-        page_in_memory = next((page for page in self.pages_in_memory if page.page_number == page_number), None)
-
-        if page_in_memory:
-            # 如果页面已经在内存中，更新访问方法和引用位
-            page_in_memory.access_method = access_method
-            page_in_memory.status_bits['referenced'] = True
+    def access_page(self, page):
+        existing_page = self.get_page(page.page_number)
+        if existing_page:
+            existing_page.reference_bit = 1  # 设置引用位
+            existing_page.modified_bit = page.modified_bit  # 更新修改位
+            existing_page.valid = True
+            print(f"Page {page.page_number} is already in memory.")
         else:
-            # 如果页面不在内存中，触发缺页中断
-            self.page_faults += 1
-            if len(self.pages_in_memory) < self.page_table_size:
-                # 空间足够，直接添加
-                new_page = Page(page_number)
-                new_page.access_method = access_method
-                self.pages_in_memory.append(new_page)
+            if len(self.frames) < self.num_frames:
+                # 内存未满，直接添加页面
+                page.physical_block = len(self.frames)  # 分配物理块号
+                self.frames.append(page)
+                page.valid = True
+                print(f"Page {page.page_number} caused a page fault and was added to memory.")
             else:
-                # 页表已满，进行页面替换
                 while True:
-                    page_to_replace = self.pages_in_memory[self.pointer]
-                    if not page_to_replace.status_bits['referenced'] and not page_to_replace.status_bits['dirty']:
-                        # 找到一个没有被引用且没有脏的页面，进行替换
-                        self.pages_in_memory[self.pointer] = Page(page_number)
-                        self.pages_in_memory[self.pointer].access_method = access_method
+                    current_page = self.frames[self.pointer]
+                    if current_page.reference_bit == 0 and current_page.modified_bit == 0:
+                        # 找到引用位和修改位都为0的页面，进行替换
+                        page.physical_block = current_page.physical_block  # 继承被替换页面的物理块号
+                        self.frames[self.pointer] = page
+                        page.valid = True
+                        self.pointer = (self.pointer + 1) % self.num_frames
+                        print(f"Page {page.page_number} caused a page fault and replaced page {current_page.page_number}.")
                         break
-                    elif not page_to_replace.status_bits['referenced']:
-                        # 如果页面没有被引用但被标记为脏，优先写回磁盘
-                        page_to_replace.status_bits['dirty'] = False  # 重置脏位
-                        self.pointer = (self.pointer + 1) % self.page_table_size  # 移动指针继续查找
+                    elif current_page.reference_bit == 0 and current_page.modified_bit == 1:
+                        # 找到引用位为0但修改位为1的页面，清除修改位
+                        current_page.modified_bit = 0
                     else:
-                        # 设置该页面的引用位为 0，并移动指针
-                        page_to_replace.status_bits['referenced'] = False
-                        self.pointer = (self.pointer + 1) % self.page_table_size
+                        # 引用位为1的页面，清除引用位
+                        current_page.reference_bit = 0
+                    self.pointer = (self.pointer + 1) % self.num_frames
+        self.print_page_table()
 
-        # 显示当前页表
-        self.display_page_table()
+    def print_page_table(self):
+        print("Current Page Table:")
+        for frame in self.frames:
+            print(frame)

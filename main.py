@@ -2,34 +2,36 @@ from algorithms.fifo import FIFO
 from algorithms.LRU import LRU
 from algorithms.clock import Clock
 from algorithms.OPT import OPT
+from algorithms.improvedClock import ImprovedClock  
 from utils.generator import generate_access_sequence
 from utils.performance import evaluate_performance
 
 def main():
-    num_frames = 3
-    num_pages = 5
-    sequence_length = 10
+    num_frames = 10  # 内存的帧数
+    num_pages = 20  # 总页数
+    sequence_length = 50  # 访问序列长度
     access_sequence = generate_access_sequence(num_pages, sequence_length)
 
-    print("Testing FIFO Algorithm:")
-    fifo = FIFO(num_frames)
-    page_faults_fifo = evaluate_performance(fifo, access_sequence)
-    print(f"Total Page Faults (FIFO): {page_faults_fifo}\n")
+    algorithms = {
+        "FIFO": FIFO(num_frames),
+        "LRU": LRU(num_frames),
+        "Clock": Clock(num_frames),
+        "OPT": OPT(num_frames),
+        "Improved Clock": ImprovedClock(num_frames)
+    }
 
-    print("Testing LRU Algorithm:")
-    lru = LRU(num_frames)
-    page_faults_lru = evaluate_performance(lru, access_sequence)
-    print(f"Total Page Faults (LRU): {page_faults_lru}\n")
+    results = {}
 
-    print("Testing Clock Algorithm:")
-    clock = Clock(num_frames)
-    page_faults_clock = evaluate_performance(clock, access_sequence)
-    print(f"Total Page Faults (Clock): {page_faults_clock}\n")
+    for name, algorithm in algorithms.items():
+        print(f"Testing {name} Algorithm:")
+        page_faults = evaluate_performance(algorithm, access_sequence)
+        results[name] = page_faults
+        print(f"Total Page Faults ({name}): {page_faults}\n")
 
-    print("Testing OPT Algorithm:")
-    opt = OPT(num_frames)
-    page_faults_opt = evaluate_performance(opt, access_sequence)
-    print(f"Total Page Faults (OPT): {page_faults_opt}")
+    print("Summary of Page Faults and Rates:")
+    for name, page_faults in results.items():
+        fault_rate = page_faults / sequence_length
+        print(f"{name} - Page Faults: {page_faults}, Fault Rate: {fault_rate:.2f}")
 
 if __name__ == "__main__":
     main()
